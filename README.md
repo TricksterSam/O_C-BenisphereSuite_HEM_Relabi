@@ -17,6 +17,8 @@ Yes! This fork was an opportunity for me add stuff I wanted to see on my o_C wit
 
 As of v1.0, I have added two new applets inspired by very popular modules ([Mutable Instruments Grids](https://mutable-instruments.net/modules/grids/) and [Noise Engineering Mimetic Digitalis](https://noiseengineering.us/products/mimetic-digitalis)) as well as some minor improvements to existing apps. I've also removed all of the full-width o_C style apps to make space for these changes. To see all of the changes in detail, visit the [wiki](https://github.com/benirose/O_C-BenisphereSuite/wiki).
 
+TricksterSam: This version modifies Runglbook to be more useful in building a Benjolin. CV2 is automatically XOR against the next bit in the shift register. Out2 provides this XOR value.
+
 ### How do I try it?
 
 Head over to the [releases](https://github.com/benirose/O_C-BenisphereSuite/releases) section and download the latest release. Follow the ["Method A" instructions](https://ornament-and-cri.me/firmware/#method_a) from the Ornament and Crime website, except use the hex file you downloaded from the releases section.
