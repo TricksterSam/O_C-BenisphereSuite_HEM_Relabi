@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+// Modified by Samuel Burt 2023
 
 
 class RunglBook : public HemisphereApplet {
@@ -28,7 +29,8 @@ public:
     }
 
     void Start() {
-        threshold = (12 << 7) * 2;
+        // threshold = (12 << 7) * 2;
+        mask = 0x07; // default mask is 0x07 (last three bits)
     }
 
     void Controller() {
@@ -40,16 +42,26 @@ public:
                 reg = (reg << 1) | ((reg >> 7) & 0x01);
             } else {
                 byte second_msb = (reg << 1) & 0x01;
-                byte gatebit = (In(0) > threshold);
+                // byte gatebit = (In(0) > threshold);
+                // Treshhold was variable. Changed behavior
+                gatebit = (In(0) > 3072);
                 xorbit = second_msb ^ gatebit; 
                 reg = (reg << 1) | xorbit;
+                
             }
 
-            int rungle = Proportion(reg & 0x07, 0x07, HEMISPHERE_MAX_CV);
-            int xor_out = xorbit ? 8000 : 0;
+
+            bitdepthcv = ((In(1) * 4) / 8192);
+            bitdepth = mask + bitdepthcv; 
+            bitdepth = constrain(bitdepth, 2, 8);
+            shiftedMask = (1 << bitdepth) -1; // create a mask with the desired number of bits
+            rungle = Proportion(reg & shiftedMask, shiftedMask, HEMISPHERE_MAX_CV);
+            // int xor_out = xorbit ? 8000 : 0;
+            scaled_gatebit = gatebit * 20000;
+            
 
             Out(0, rungle);
-            Out(1, xor_out);
+            Out(1, scaled_gatebit); // high output when gate exceeds threshold, also timed to new cv values
 
             
         }
@@ -58,40 +70,57 @@ public:
 
     void View() {
         gfxHeader(applet_name());
-        gfxPrint(1, 15, "Thr:");
-        gfxPrintVoltage(threshold);
+        // gfxPrint(1, 15, "Thr:");
+        // gfxPrintVoltage(threshold);
+        // App previously allowed a threshold selection. Changing behavior to allow change of bitdepth of the output.
+        gfxPrint(1, 15, "Bit:");
+        gfxPrint(mask);
+        gfxPrint(" ");
+        gfxPrint(bitdepth);
         gfxSkyline();
     }
 
     void OnButtonPress() { }
 
     void OnEncoderMove(int direction) {
-        threshold += (direction * 128);
-        threshold = constrain(threshold, (12 << 7), (12 << 7) * 5); // 1V - 5V
+        // threshold += (direction * 128);
+        // threshold = constrain(threshold, (12 << 7), (12 << 7) * 5); // 1V - 5V
+        // App previously allowed a threshold selection. Changing behavior to allow change of bitdepth of the output.
+        mask += direction; // update mask based on encoder direction
+        mask = constrain(mask, 3, 8); // constrain mask to the range of 3 to 8 bits
     }
         
     uint64_t OnDataRequest() {
         uint64_t data = 0;
-        Pack(data, PackLocation {0,16}, threshold);
+        // Pack(data, PackLocation {0,16}, threshold);
+        Pack(data, PackLocation {0,16}, mask);
         return data;
     }
     void OnDataReceive(uint64_t data) {
-        threshold = Unpack(data, PackLocation {0,16});
+        // threshold = Unpack(data, PackLocation {0,16});
+        mask = Unpack(data, PackLocation {0,16});
     }
 
 protected:
     void SetHelp() {
         //                               "------------------" <-- Size Guide
         help[HEMISPHERE_HELP_DIGITALS] = "1=Clock 2=Freeze";
-        help[HEMISPHERE_HELP_CVS]      = "1=Signal";
-        help[HEMISPHERE_HELP_OUTS]     = "A=Rungle B=XOR";
-        help[HEMISPHERE_HELP_ENCODER]  = "Threshold";
+        help[HEMISPHERE_HELP_CVS]      = "1=Signal 2=Bit Depth";
+        help[HEMISPHERE_HELP_OUTS]     = "A=Rungle B=Gate";
+        help[HEMISPHERE_HELP_ENCODER]  = "Bit Depth";
         //                               "------------------" <-- Size Guide
     }
     
 private:
     byte reg;
-    uint16_t threshold;
+    byte gatebit;
+    // uint16_t threshold;
+    int16_t mask;
+    int16_t bitdepth;
+    float bitdepthcv;
+    uint16_t scaled_gatebit;
+    int rungle;
+    int shiftedMask;
 };
 
 
