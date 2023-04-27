@@ -28,27 +28,24 @@ public:
         return "Relabi";
     }
 
-    static constexpr int min_freq = 3; // 0.03Hz
-    static constexpr int max_freq = 100000; // 1000 Hz
-
     void Start() {
-        freq[0] = 450.0;
-        freq[1] = 300.0f;
-        freq[2] = 100.0f;
-        freq[3] = 50.0f;
+        freq[0] = 450;
+        freq[1] = 300;
+        freq[2] = 100;
+        freq[3] = 50;
         xmod[0] = 18;
         xmod[1] = 18;
         xmod[2] = 18;
         xmod[3] = 18;
-        threshold = 50;
+        threshold = 35;
         for (uint8_t count = 0; count < 4; count++) {
-            freqKnob[count] = 600 * pow((freq[count]/30000.0), 1.0/6.0);
+            freqKnob[count] = 600.0 * pow((freq[count]/30000.0), 1.0/6.0);
             xmodKnob[count] = xmod[count];
             osc[count] = WaveformManager::VectorOscillatorFromWaveform(35);
             osc[count].SetFrequency(freq[count]);
             #ifdef BUCHLA_4U
-              osc[ch].Offset((12 << 7) * 4);
-              osc[ch].SetScale((12 << 7) * 4);
+              osc[count].Offset((12 << 7) * 4);
+              osc[count].SetScale((12 << 7) * 4);
             #else
               osc[count].SetScale((12 << 7) * 3);
             #endif
@@ -56,15 +53,11 @@ public:
     }
 
     void Controller() {
-        osc[0].SetFrequency(freq[0] + (freq[0] * xmod[0] / 100 * (sample[3]) / 10000 + 0.5));
-        osc[1].SetFrequency(freq[1] + (freq[1] * xmod[1] / 100 * (sample[0]) / 10000 + 0.5));
-        osc[2].SetFrequency(freq[2] + (freq[2] * xmod[2] / 100 * (sample[0]) / 10000 + 0.5));
-        osc[3].SetFrequency(freq[3] + (freq[3] * xmod[3] / 100 * (sample[0]) / 10000 + 0.5));
-        sample[0] = osc[0].Next();
-        sample[1] = osc[1].Next();
-        sample[2] = osc[2].Next();
-        sample[3] = osc[3].Next();
-        simfloat relabiWave = (sample[0] + sample[1] + sample[2] + sample[3]) / 4;
+        for (uint8_t count = 0; count < 4; count++) {
+            osc[count].SetFrequency(freq[count] + (freq[count] * xmod[count] / 100 * (sample[(count + 3) % 4]) / 10000 + 0.5));
+            sample[count] = osc[count].Next();
+        }
+        int relabiWave = (sample[0] + sample[1] + sample[2] + sample[3]) / 4;
         int threshGate = 0;
         if (relabiWave > (threshold * 46.08)) {threshGate = 4608;} else {threshGate = 0;}
         Out(0, relabiWave);
@@ -138,7 +131,7 @@ public:
         case 1: // FREQ
             freqKnob[selectedChannel] += (direction);
             freqKnob[selectedChannel] = constrain(freqKnob[selectedChannel], 0, 600);
-            freq[selectedChannel] = (30000.0f * pow((freqKnob[selectedChannel]/ 600.0f), 6));
+            freq[selectedChannel] = (30000.0f * pow((freqKnob[selectedChannel]/ 600.0f), 6.0f));
             break;
         case 2: // XMOD
             xmodKnob[selectedChannel] += (direction);
@@ -158,22 +151,20 @@ public:
     }
         
     uint64_t OnDataRequest() {
-    //     uint64_t data = 0;
-    //     Pack(data, PackLocation {0,6}, waveform_number[0]);
-    //     Pack(data, PackLocation {6,6}, waveform_number[1]);
+        // We need to store freq[ch], xmod[ch], phase[ch], and thresh.
+        uint64_t data = 0;
+        // for (int i = 0; i < 4; ++i) {
+        //   int exponent = 0;
+        //   if (freq[i] > 250) exponent++;
+        //   if (freq[i] > 1000) exponent++;
+        //   if (freq[i] > 10000) exponent++;
+        //   Pack(data, PackLocation {0 + i * 10, 2}, exponent);
 
-    //     for (int i = 0; i < 4; ++i) {
-    //       int exponent = 0;
-    //       if (freq[i] > 250) exponent++;
-    //       if (freq[i] > 1000) exponent++;
-    //       if (freq[i] > 10000) exponent++;
-    //       Pack(data, PackLocation {12 + i * 10, 2}, exponent);
-
-    //       int mantissa = freq[i] / pow10_lut[exponent];
-    //       Pack(data, PackLocation {12 + i * 10 + 2, 8}, mantissa);
-    //     }
+        //   int mantissa = xmod[i] / pow10_lut[exponent];
+        //   Pack(data, PackLocation {0 + i * 10 + 2, 8}, mantissa);
+        // }
         
-    //     return data;
+        return data;
     }
     
     void OnDataReceive(uint64_t data) {
@@ -198,48 +189,47 @@ protected:
     }
     
 private:
+    // static constexpr int pow10_lut[] = { 1, 10, 100, 1000 };
+    // int cursor; // 0=Freq A; 1=Cross Mod A; 2=Phase A; 3=Freq B; 4=Cross Mod B; etc.
+    // VectorOscillator osc[4];
+    // constexpr static uint8_t ch = 4;
+    // constexpr static uint8_t numParams = 5;
+    // simfloat freq[ch]; // in centihertz
+    // uint16_t xmod[ch];
+    // uint16_t phase[ch];
+    // uint16_t threshold;
+    // uint8_t selectedChannel = 0;
+    // uint8_t selectedParam = 0;
+    // int sample[ch];
+    // uint32_t outFreq[ch];
+    // simfloat freqKnob[4];
+    // uint16_t xmodKnob[4];
+    // uint8_t countLimit = 0;
+    // uint16_t waveform_number[4];
     static constexpr int pow10_lut[] = { 1, 10, 100, 1000 };
     int cursor; // 0=Freq A; 1=Cross Mod A; 2=Phase A; 3=Freq B; 4=Cross Mod B; etc.
     VectorOscillator osc[4];
     constexpr static uint8_t ch = 4;
     constexpr static uint8_t numParams = 5;
-    simfloat threshold;
+    uint16_t threshold;
     uint8_t selectedOsc;
     simfloat freq[ch]; // in centihertz
-    simfloat selectedFreq;
-    simfloat xmod[ch];
+    uint16_t xmod[ch];
     uint8_t selectedXmod;
-    simfloat phase[ch];
+    uint16_t phase[ch];
     int selectedChannel = 0;
     uint8_t selectedParam = 0;
-    simfloat sample[ch];
-    simfloat outFreq[ch];
+    int sample[ch];
+    uint32_t outFreq[ch];
     simfloat freqKnob[4];
     simfloat xmodKnob[4];
     uint8_t countLimit = 0;
     // Settings
-    int waveform_number[4];
-    
-
-    
-    // void SwitchWaveform(byte ch, int waveform) {
-    //     waveform = 35;
-    //     osc[ch] = WaveformManager::VectorOscillatorFromWaveform(waveform);
-    //     waveform_number[ch] = waveform;
-        //osc[ch].SetFrequency(freq[ch]);
-// #ifdef BUCHLA_4U
-//         osc[ch].Offset((12 << 7) * 4);
-//         osc[ch].SetScale((12 << 7) * 4);
-// #else
-//         osc[ch].SetScale((12 << 7) * 3);
-// #endif
-//     }
-
+    int waveform_number[4];    
     int ones(int n) {return (n / 100);}
     int hundredths(int n) {return (n % 100);}
 };
 
-constexpr int Relabi::pow10_lut[];
 
 
 ////////////////////////////////////////////////////////////////////////////////
