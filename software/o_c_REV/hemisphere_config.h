@@ -11,7 +11,7 @@
 // * Category filtering is deprecated at 1.8, but I'm leaving the per-applet categorization
 // alone to avoid breaking forked codebases by other developers.
 
-#define HEMISPHERE_AVAILABLE_APPLETS 58
+#define HEMISPHERE_AVAILABLE_APPLETS 59
 
 //////////////////  id  cat   class name
 #define HEMISPHERE_APPLETS { \
@@ -48,6 +48,7 @@
     DECLARE_APPLET( 20, 0x02, Palimpsest), \
     DECLARE_APPLET( 59, 0x04, ProbabilityDivider), \
     DECLARE_APPLET( 62, 0x04, ProbabilityMelody), \
+    DECLARE_APPLET( 65, 0x01, Relabi), \
     DECLARE_APPLET( 44, 0x01, RunglBook), \
     DECLARE_APPLET( 26, 0x08, ScaleDuet), \
     DECLARE_APPLET( 40, 0x40, Schmitt), \

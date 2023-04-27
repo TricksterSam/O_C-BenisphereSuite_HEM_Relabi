@@ -28,13 +28,13 @@ public:
         return "VectorLFO";
     }
 
-    static constexpr int min_freq = 3;
-    static constexpr int max_freq = 100000;
+    static constexpr int min_freq = 3; // 0.03Hz
+    static constexpr int max_freq = 100000; // 1000 Hz
 
     void Start() {
         ForEachChannel(ch)
         {
-            freq[ch] = 200;
+            freq[ch] = 200; // 2Hz
             waveform_number[ch] = 0;
             SwitchWaveform(ch, 0);
             Out(ch, 0);

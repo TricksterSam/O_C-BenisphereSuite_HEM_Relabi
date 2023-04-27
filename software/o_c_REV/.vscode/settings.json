@@ -32,5 +32,6 @@
     "**/.*/**",
     "**/.vscode",
     "**/.vscode/**"
-  ]
+  ],
+  "cmake.configureOnOpen": false
 }
