@@ -222,7 +222,7 @@ private:
     int sample[ch];
     uint32_t outFreq[ch];
     simfloat freqKnob[4];
-    simfloat xmodKnob[4];
+    uint16_t xmodKnob[4];
     uint8_t countLimit = 0;
     // Settings
     int waveform_number[4];    
