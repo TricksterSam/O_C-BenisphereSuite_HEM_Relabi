@@ -53,19 +53,29 @@ public:
     }
 
     void Controller() {
-        for (uint8_t count = 0; count < 4; count++) {
-            osc[count].SetFrequency(freq[count] + (freq[count] * xmod[count] / 100 * (sample[(count + 3) % 4]) / 10000 + 0.5));
-            sample[count] = osc[count].Next();
-        }
+        static uint16_t clkDiv = 0; // clkDiv allows us to calculate every other tick to save cycles
+        if (clkDiv == 0) {
+            for (uint8_t count = 0; count < 4; count++) {
+                osc[count].SetFrequency(freq[count] + (freq[count] * xmod[count] / 100 * (sample[(count + 3) % 4]) / 10000 + 0.5));
+                sample[count] = osc[count].Next();
+            }
+        
         int relabiWave = (sample[0] + sample[1] + sample[2] + sample[3]) / 4;
         int threshGate = 0;
-        if (relabiWave > (threshold * 46.08)) {threshGate = 4608;} else {threshGate = 0;}
+        if (relabiWave > (threshold * 46.08)) {
+            threshGate = 4608;
+            } else {
+                threshGate = 0;}
         Out(0, relabiWave);
         Out(1, threshGate);
+        }
+        clkDiv++;
+        clkDiv = clkDiv % 2;
     }
 
     void View() {     
         gfxHeader(applet_name());
+
         // Display OSC label and value
         gfxPrint(15, 15, "OSC");
         gfxPrint(35, 15, selectedChannel);
@@ -144,7 +154,7 @@ public:
             break;
         case 4: // THRS
             threshold += direction;
-            threshold = constrain(threshold, 0, 100);
+            threshold = constrain(threshold, -100, 100);
             break;
         }
 
@@ -211,7 +221,7 @@ private:
     VectorOscillator osc[4];
     constexpr static uint8_t ch = 4;
     constexpr static uint8_t numParams = 5;
-    uint16_t threshold;
+    int16_t threshold;
     uint8_t selectedOsc;
     simfloat freq[ch]; // in centihertz
     uint16_t xmod[ch];
@@ -220,14 +230,14 @@ private:
     int selectedChannel = 0;
     uint8_t selectedParam = 0;
     int sample[ch];
-    uint32_t outFreq[ch];
+    simfloat outFreq[ch];
     simfloat freqKnob[4];
     uint16_t xmodKnob[4];
     uint8_t countLimit = 0;
-    // Settings
     int waveform_number[4];    
     int ones(int n) {return (n / 100);}
     int hundredths(int n) {return (n % 100);}
+    int valueToDisplay;
 };
 
 
