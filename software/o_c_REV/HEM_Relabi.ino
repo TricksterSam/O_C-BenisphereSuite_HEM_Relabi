@@ -54,9 +54,26 @@ public:
 
     void Controller() {
         static uint16_t clkDiv = 0; // clkDiv allows us to calculate every other tick to save cycles
+        // int setFreq[4];
+        // int setPhase[4];
+        if (Clock(0) > 0) {
+            for (uint8_t pcount = 0; pcount < 4; pcount++) {
+                if (Clock(0) > 0) {
+                    int setPhase = round(phase[pcount] / 100 * 12);
+                    osc[pcount].SetPhase(setPhase);
+                    // osc[count].Reset();
+                }
+            }
+        }
         if (clkDiv == 0) {
             for (uint8_t count = 0; count < 4; count++) {
-                osc[count].SetFrequency(freq[count] + (freq[count] * xmod[count] / 100 * (sample[(count + 3) % 4]) / 10000 + 0.5));
+                // if (Clock(0) > 0) {
+                //     int setPhase = round(phase[count] / 100 * 12);
+                //     osc[count].SetPhase(setPhase);
+                //     // osc[count].Reset();
+                // }
+                int setFreq = freq[count] + (freq[count] * xmod[count] / 100 * (sample[(count + 3) % 4]) / 10000 + 0.5) + (4000 * In(0) / 4608);
+                osc[count].SetFrequency(setFreq);
                 sample[count] = osc[count].Next();
             }
         
@@ -199,23 +216,6 @@ protected:
     }
     
 private:
-    // static constexpr int pow10_lut[] = { 1, 10, 100, 1000 };
-    // int cursor; // 0=Freq A; 1=Cross Mod A; 2=Phase A; 3=Freq B; 4=Cross Mod B; etc.
-    // VectorOscillator osc[4];
-    // constexpr static uint8_t ch = 4;
-    // constexpr static uint8_t numParams = 5;
-    // simfloat freq[ch]; // in centihertz
-    // uint16_t xmod[ch];
-    // uint16_t phase[ch];
-    // uint16_t threshold;
-    // uint8_t selectedChannel = 0;
-    // uint8_t selectedParam = 0;
-    // int sample[ch];
-    // uint32_t outFreq[ch];
-    // simfloat freqKnob[4];
-    // uint16_t xmodKnob[4];
-    // uint8_t countLimit = 0;
-    // uint16_t waveform_number[4];
     static constexpr int pow10_lut[] = { 1, 10, 100, 1000 };
     int cursor; // 0=Freq A; 1=Cross Mod A; 2=Phase A; 3=Freq B; 4=Cross Mod B; etc.
     VectorOscillator osc[4];
