@@ -39,7 +39,9 @@ public:
         xmod[3] = 18;
         threshold = 35;
         for (uint8_t count = 0; count < 4; count++) {
-            freqKnob[count] = 600.0 * pow((freq[count]/30000.0), 1.0/6.0);
+            if (freq[count] > 2000) {freqKnob[count] = (freq[count] - 2000) / 100 + 380;}
+            if (freq[count] < 2000) {freqKnob[count] = (freq[count] - 200) / 10 + 200;}
+            if (freq[count] < 200) {freqKnob[count] = freq[count];}
             xmodKnob[count] = xmod[count];
             osc[count] = WaveformManager::VectorOscillatorFromWaveform(35);
             osc[count].SetFrequency(freq[count]);
@@ -54,33 +56,26 @@ public:
 
     void Controller() {
         static uint16_t clkDiv = 0; // clkDiv allows us to calculate every other tick to save cycles
-        // int setFreq[4];
-        // int setPhase[4];
+        simfloat cvIn = (10*In(0)/4096 + 1);
         if (Clock(0) > 0) {
             for (uint8_t pcount = 0; pcount < 4; pcount++) {
                 if (Clock(0) > 0) {
                     int setPhase = round(phase[pcount] / 100 * 12);
                     osc[pcount].SetPhase(setPhase);
-                    // osc[count].Reset();
                 }
             }
         }
         if (clkDiv == 0) {
             for (uint8_t count = 0; count < 4; count++) {
-                // if (Clock(0) > 0) {
-                //     int setPhase = round(phase[count] / 100 * 12);
-                //     osc[count].SetPhase(setPhase);
-                //     // osc[count].Reset();
-                // }
-                int setFreq = freq[count] + (freq[count] * xmod[count] / 100 * (sample[(count + 3) % 4]) / 10000 + 0.5) + (4000 * In(0) / 4608);
+                simfloat setFreq = (freq[count] * xmod[count] / 100 * (sample[(count + 3) % 4]) / 10000 + 0.5) + (freq[count] * cvIn);
                 osc[count].SetFrequency(setFreq);
                 sample[count] = osc[count].Next();
             }
         
         int relabiWave = (sample[0] + sample[1] + sample[2] + sample[3]) / 4;
         int threshGate = 0;
-        if (relabiWave > (threshold * 46.08)) {
-            threshGate = 4608;
+        if (relabiWave > (threshold * 40.96)) {
+            threshGate = 4096;
             } else {
                 threshGate = 0;}
         Out(0, relabiWave);
@@ -91,6 +86,7 @@ public:
     }
 
     void View() {     
+        // gfxPrint(freqKnob[selectedChannel]);
         gfxHeader(applet_name());
 
         // Display OSC label and value
@@ -101,12 +97,23 @@ public:
         gfxPrint(1, 26, "FREQ");
         simfloat fDisplay = freq[selectedChannel];
         gfxPrint(1, 35, ones(fDisplay));
-        if (fDisplay < 10000) {
-          gfxPrint(".");
-          int h = hundredths(fDisplay);
-          if (h < 10) gfxPrint("0");
-          gfxPrint(h);  
-        };
+        if (fDisplay < 2000) {
+            if (fDisplay < 199) {
+                gfxPrint(".");
+                int h = hundredths(fDisplay);
+                if (h < 10) {gfxPrint("0");}
+                gfxPrint(h);
+            }
+            else {
+                gfxPrint(".");
+                int t = hundredths(fDisplay);
+                t = (t / 10) % 10;
+                gfxPrint(t);
+            }
+        }  
+
+        
+        
 
         
         // Display MOD label and value
@@ -156,22 +163,38 @@ public:
             selectedChannel = selectedChannel % 4;
             break;
         case 1: // FREQ
-            freqKnob[selectedChannel] += (direction);
-            freqKnob[selectedChannel] = constrain(freqKnob[selectedChannel], 0, 600);
-            freq[selectedChannel] = (30000.0f * pow((freqKnob[selectedChannel]/ 600.0f), 6.0f));
+            freqKnob[selectedChannel] += direction;
+            if (freqKnob[selectedChannel] < 0) {freqKnob[selectedChannel] = 512;}
+            if (freqKnob[selectedChannel] > 512) {freqKnob[selectedChannel] = 0;}
+            if (freqKnob[selectedChannel] < 200) {
+                freq[selectedChannel] = freqKnob[selectedChannel];
+            }
+            else if (freqKnob[selectedChannel] < 380) {
+                freq[selectedChannel] = 200 + ((freqKnob[selectedChannel] - 200) * 10);
+            }
+            else {
+                    freq[selectedChannel] = 2000 + ((freqKnob[selectedChannel] - 380) * 100);
+                }
             break;
         case 2: // XMOD
             xmodKnob[selectedChannel] += (direction);
-            xmodKnob[selectedChannel] = constrain(xmodKnob[selectedChannel], 0, 100);
+            xmodKnob[selectedChannel] = xmodKnob[selectedChannel] + 101;
+            xmodKnob[selectedChannel] = xmodKnob[selectedChannel] % 101;
             xmod[selectedChannel] = xmodKnob[selectedChannel];
             break;
         case 3: // PHAS
             phase[selectedChannel] += direction;
-            phase[selectedChannel] = constrain(phase[selectedChannel], 0, 100);
+            phase[selectedChannel] = phase[selectedChannel] + 101;
+            phase[selectedChannel] = phase[selectedChannel] % 101;
             break;
         case 4: // THRS
             threshold += direction;
-            threshold = constrain(threshold, -100, 100);
+            if (threshold < -100) {
+                threshold = threshold + 201;
+            }
+            if (threshold > 100) {
+                threshold = threshold - 201;
+            }
             break;
         }
 
@@ -180,29 +203,26 @@ public:
     uint64_t OnDataRequest() {
         // We need to store freq[ch], xmod[ch], phase[ch], and thresh.
         uint64_t data = 0;
-        // for (int i = 0; i < 4; ++i) {
-        //   int exponent = 0;
-        //   if (freq[i] > 250) exponent++;
-        //   if (freq[i] > 1000) exponent++;
-        //   if (freq[i] > 10000) exponent++;
-        //   Pack(data, PackLocation {0 + i * 10, 2}, exponent);
-
-        //   int mantissa = xmod[i] / pow10_lut[exponent];
-        //   Pack(data, PackLocation {0 + i * 10 + 2, 8}, mantissa);
-        // }
-        
+        // Pack(data, PackLocation {0, 9}, freq[0]);
+        // Pack(data, PackLocation {10, 9}, freq[1]);
+        // Pack(data, PackLocation {20, 9}, freq[2]);
+        // Pack(data, PackLocation {30, 9}, freq[3]);
+        // Pack(data, PackLocation {40, 7}, xmod[0]);
+        // Pack(data, PackLocation {48, 7}, xmod[1]);
+        // Pack(data, PackLocation {56, 7}, xmod[2]);
+        // Pack(data, PackLocation {63, 7}, xmod[3]);
         return data;
     }
     
     void OnDataReceive(uint64_t data) {
-    //     for (int i = 0; i < 2; ++i) {
-    //       int exponent = Unpack(data, PackLocation {12 + i * 10, 2});
-    //       int mantissa = Unpack(data, PackLocation {12 + i * 10 + 2, 8});
-          
-    //       freq[i] = mantissa * pow10_lut[exponent];
-    //     }
-    //     SwitchWaveform(0, Unpack(data, PackLocation {0,6}));
-    //     SwitchWaveform(1, Unpack(data, PackLocation {6,6}));
+        // freq[0] = Unpack(data, PackLocation {0, 9});
+        // freq[1] = Unpack(data, PackLocation {10, 9});
+        // freq[2] = Unpack(data, PackLocation {20, 9});
+        // freq[3] = Unpack(data, PackLocation {30, 9});
+        // xmod[0] = Unpack(data, PackLocation {40, 7});
+        // xmod[1] = Unpack(data, PackLocation {48, 7});
+        // xmod[2] = Unpack(data, PackLocation {56, 7});
+        // xmod[3] = Unpack(data, PackLocation {63, 7});
     }
 
 protected:
