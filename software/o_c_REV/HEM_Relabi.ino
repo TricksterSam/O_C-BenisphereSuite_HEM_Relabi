@@ -49,13 +49,12 @@ public:
               osc[count].Offset((12 << 7) * 4);
               osc[count].SetScale((12 << 7) * 4);
             #else
-              osc[count].SetScale((12 << 7) * 3);
+              osc[count].SetScale((12 << 7) * 6);
             #endif
         }
     }
 
     void Controller() {
-        static uint16_t clkDiv = 0; // clkDiv allows us to calculate every other tick to save cycles
         simfloat cvIn = (10*In(0)/4096 + 1);
         if (Clock(0) > 0) {
             for (uint8_t pcount = 0; pcount < 4; pcount++) {
@@ -69,24 +68,24 @@ public:
             for (uint8_t count = 0; count < 4; count++) {
                 simfloat setFreq = (freq[count] * xmod[count] / 100 * (sample[(count + 3) % 4]) / 10000 + 0.5) + (freq[count] * cvIn);
                 osc[count].SetFrequency(setFreq);
-                sample[count] = osc[count].Next();
+                sample[count] = 4608 + (osc[count].Next()/ 2);
             }
         
         int relabiWave = (sample[0] + sample[1] + sample[2] + sample[3]) / 4;
         int threshGate = 0;
-        if (relabiWave > (threshold * 40.96)) {
-            threshGate = 4096;
+        if (relabiWave > (threshold * 92.16)) {
+            threshGate = 7000;
             } else {
                 threshGate = 0;}
         Out(0, relabiWave);
         Out(1, threshGate);
         }
         clkDiv++;
-        clkDiv = clkDiv % 2;
+        clkDiv = clkDiv % 4;
     }
 
     void View() {     
-        // gfxPrint(freqKnob[selectedChannel]);
+        // gfxPrint(sample[0]);
         gfxHeader(applet_name());
 
         // Display OSC label and value
@@ -164,8 +163,8 @@ public:
             break;
         case 1: // FREQ
             freqKnob[selectedChannel] += direction;
-            if (freqKnob[selectedChannel] < 0) {freqKnob[selectedChannel] = 512;}
-            if (freqKnob[selectedChannel] > 512) {freqKnob[selectedChannel] = 0;}
+            if (freqKnob[selectedChannel] < 0) {freqKnob[selectedChannel] = 510;}
+            if (freqKnob[selectedChannel] > 510) {freqKnob[selectedChannel] = 0;}
             if (freqKnob[selectedChannel] < 200) {
                 freq[selectedChannel] = freqKnob[selectedChannel];
             }
@@ -189,11 +188,11 @@ public:
             break;
         case 4: // THRS
             threshold += direction;
-            if (threshold < -100) {
-                threshold = threshold + 201;
+            if (threshold < 0) {
+                threshold = threshold + 101;
             }
             if (threshold > 100) {
-                threshold = threshold - 201;
+                threshold = threshold - 101;
             }
             break;
         }
@@ -258,6 +257,7 @@ private:
     int ones(int n) {return (n / 100);}
     int hundredths(int n) {return (n % 100);}
     int valueToDisplay;
+    uint16_t clkDiv = 0; // clkDiv allows us to calculate every other tick to save cycles
 };
 
 
