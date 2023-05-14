@@ -23,9 +23,7 @@ TricksterSam: This version also includes a new Applet called Relabi, which gener
 
 ### How do I try it?
 
-Head over to the [releases](https://github.com/benirose/O_C-BenisphereSuite/releases) section and download the latest release. Follow the ["Method A" instructions](https://ornament-and-cri.me/firmware/#method_a) from the Ornament and Crime website, except use the hex file you downloaded from the releases section.
-
-Alternatively, you can follow instructions in [this video](https://www.youtube.com/watch?v=dg_acylaMZU).
+Download the latest release. Benispheres has switched to using [platform.io](https://github.com/benirose/O_C-BenisphereSuite/issues/67) to compile the firmware. The Arduino IDE will fail. You can [easily add](https://www.youtube.com/watch?v=dany7ae_0ks) the PlatformIO IDE and Arduino extensions to Visual Studio Code and it will add all the tools you need.
 
 Note: you can reload any other previous firmware you had installed (stock o_C or Hemisphere Suite) just as easily.
 
