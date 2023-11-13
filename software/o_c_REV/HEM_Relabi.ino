@@ -29,15 +29,14 @@ public:
     }
 
     void Start() {
-        freq[0] = 450;
-        freq[1] = 300;
-        freq[2] = 100;
-        freq[3] = 50;
-        xmod[0] = 18;
-        xmod[1] = 18;
-        xmod[2] = 18;
-        xmod[3] = 18;
-        threshold = 35;
+        freq[0] = 30;
+        freq[1] = 50;
+        freq[2] = 70;
+        freq[3] = 110;
+        xmod[0] = 20;
+        xmod[1] = 20;
+        xmod[2] = 20;
+        xmod[3] = 20;
         for (uint8_t count = 0; count < 4; count++) {
             if (freq[count] > 2000) {freqKnob[count] = (freq[count] - 2000) / 100 + 380;}
             if (freq[count] < 2000) {freqKnob[count] = (freq[count] - 200) / 10 + 200;}
@@ -56,29 +55,37 @@ public:
 
     void Controller() {
         simfloat cvIn = (10*In(0)/4096 + 1);
-        if (Clock(0) > 0) {
+        if (oldClock != Clock(0)) {
+            if (oldClock = 1) {
+                for (uint8_t pcount = 0; pcount < 4; pcount++) {
+                    if (Clock(0) > 0) {
+                        int setPhase = round(phase[pcount] / 100 * 12);
+                        osc[pcount].SetPhase(setPhase);
+                    }
+                }
+            }
+        }
+        oldClock = Clock(0);
+        /*if (Clock(0) > 0) {
             for (uint8_t pcount = 0; pcount < 4; pcount++) {
                 if (Clock(0) > 0) {
                     int setPhase = round(phase[pcount] / 100 * 12);
                     osc[pcount].SetPhase(setPhase);
                 }
             }
-        }
+        }*/
         if (clkDiv == 0) {
             for (uint8_t count = 0; count < 4; count++) {
-                simfloat setFreq = (freq[count] * xmod[count] / 100 * (sample[(count + 3) % 4]) / 10000 + 0.5) + (freq[count] * cvIn);
+                simfloat setFreq = (freq[count] * cvIn * xmod[count] / 100 * (sample[(count + 3) % 4]) / 400 + 0.5) + (freq[count] * cvIn);
                 osc[count].SetFrequency(setFreq);
                 sample[count] = 4608 + (osc[count].Next()/ 2);
             }
         
+        int wave1 = sample[0];
+        int wave2 = sample[2];
         int relabiWave = (sample[0] + sample[1] + sample[2] + sample[3]) / 4;
-        int threshGate = 0;
-        if (relabiWave > (threshold * 92.16)) {
-            threshGate = 7000;
-            } else {
-                threshGate = 0;}
-        Out(0, relabiWave);
-        Out(1, threshGate);
+        Out(0, wave1);
+        Out(1, wave2);
         }
         clkDiv++;
         clkDiv = clkDiv % 4;
@@ -109,6 +116,7 @@ public:
                 t = (t / 10) % 10;
                 gfxPrint(t);
             }
+        
         }  
 
         
@@ -123,9 +131,13 @@ public:
         gfxPrint(1, 46, "PHAS");
         gfxPrint(1, 55, phase[selectedChannel]);
         
-        // Display THRS label and value
-        gfxPrint(31, 46, "THRS");
-        gfxPrint(31, 55, threshold);
+
+
+
+        if (clkDiv == 0) {
+                gfxRect(1, 63, sample[0] / 400, 1);
+                gfxRect(31, 63, sample[2] / 400, 1);
+            }
 
 
 
@@ -150,7 +162,7 @@ public:
 
     void OnButtonPress() {
         ++cursor;
-        cursor = cursor % 5;
+        cursor = cursor % 4;
         selectedParam = cursor;
         ResetCursor();
     }
@@ -161,7 +173,7 @@ public:
             selectedChannel = selectedChannel + direction + 4;
             selectedChannel = selectedChannel % 4;
             break;
-        case 1: // FREQ
+        case 1: // FREQ (0-20.0)
             freqKnob[selectedChannel] += direction;
             if (freqKnob[selectedChannel] < 0) {freqKnob[selectedChannel] = 510;}
             if (freqKnob[selectedChannel] > 510) {freqKnob[selectedChannel] = 0;}
@@ -175,32 +187,24 @@ public:
                     freq[selectedChannel] = 2000 + ((freqKnob[selectedChannel] - 380) * 100);
                 }
             break;
-        case 2: // XMOD
+        case 2: // XMOD (0-100)
             xmodKnob[selectedChannel] += (direction);
             xmodKnob[selectedChannel] = xmodKnob[selectedChannel] + 101;
             xmodKnob[selectedChannel] = xmodKnob[selectedChannel] % 101;
             xmod[selectedChannel] = xmodKnob[selectedChannel];
             break;
-        case 3: // PHAS
+        case 3: // PHAS (0-100)
             phase[selectedChannel] += direction;
             phase[selectedChannel] = phase[selectedChannel] + 101;
             phase[selectedChannel] = phase[selectedChannel] % 101;
             break;
-        case 4: // THRS
-            threshold += direction;
-            if (threshold < 0) {
-                threshold = threshold + 101;
-            }
-            if (threshold > 100) {
-                threshold = threshold - 101;
-            }
-            break;
+
         }
 
     }
         
     uint64_t OnDataRequest() {
-        // We need to store freq[ch], xmod[ch], phase[ch], and thresh.
+        // We need to store freq[ch], xmod[ch], and phase[ch].
         uint64_t data = 0;
         // Pack(data, PackLocation {0, 9}, freq[0]);
         // Pack(data, PackLocation {10, 9}, freq[1]);
@@ -228,9 +232,9 @@ protected:
     void SetHelp() {
         //                               "------------------" <-- Size Guide
         help[HEMISPHERE_HELP_DIGITALS] = "1=Reset 2=NA";
-        help[HEMISPHERE_HELP_CVS]      = "1=Freq 2=Thresh";
+        help[HEMISPHERE_HELP_CVS]      = "1=AllFreq 2=NA";
         help[HEMISPHERE_HELP_OUTS]     = "A=Wave B=Gate";
-        help[HEMISPHERE_HELP_ENCODER]  = "Frq/Mod/Phse/Thrs";
+        help[HEMISPHERE_HELP_ENCODER]  = "Freq/XMod/Phase";
         //                               "------------------" <-- Size Guide
     }
     
@@ -240,7 +244,6 @@ private:
     VectorOscillator osc[4];
     constexpr static uint8_t ch = 4;
     constexpr static uint8_t numParams = 5;
-    int16_t threshold;
     uint8_t selectedOsc;
     simfloat freq[ch]; // in centihertz
     uint16_t xmod[ch];
@@ -258,6 +261,7 @@ private:
     int hundredths(int n) {return (n % 100);}
     int valueToDisplay;
     uint16_t clkDiv = 0; // clkDiv allows us to calculate every other tick to save cycles
+    uint8_t oldClock = 0;
 };
 
 
